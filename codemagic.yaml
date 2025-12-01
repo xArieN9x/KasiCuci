@@ -1,4 +1,3 @@
-# codemagic.yaml
 workflows:
   android-release:
     name: Android Release Workflow
@@ -6,15 +5,21 @@ workflows:
     environment:
       java: 17
     scripts:
-      - name: Setup Gradle (optional but safe)
+      - name: Generate Gradle Wrapper
         script: |
+          # Install Gradle CLI (available in Codemagic)
+          gradle --version
+          # Generate wrapper with Gradle 8.0
+          gradle wrapper --gradle-version 8.0
           chmod +x ./gradlew
-      - name: Build Debug APK (signed, installable)
+
+      - name: Build Debug APK (signed & installable)
         script: |
-          ./gradlew clean
-          ./gradlew assembleDebug
-      - name: Verify APK existence
+          ./gradlew clean assembleDebug
+
+      - name: List APK
         script: |
           ls -la app/build/outputs/apk/debug/
+
     artifacts:
       - app/build/outputs/**/*.apk
