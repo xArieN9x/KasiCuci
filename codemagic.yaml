@@ -3,8 +3,7 @@ workflows:
     name: Android Release Workflow
     max_build_duration: 60
     environment:
-      android:
-        java_version: 17
+      java: 17
     scripts:
       - name: Setup Gradle
         script: |
