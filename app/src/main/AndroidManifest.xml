@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- INTERNET permission WAJIB untuk fetch IP -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Optional: untuk future use (network state) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
         android:allowBackup="true"
-        android:theme="@style/Theme.AppCompat.Light">
-        
+        android:theme="@style/Theme.AppCompat.Light"
+        android:usesCleartextTraffic="false"> <!-- HTTPS only, selamat -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
