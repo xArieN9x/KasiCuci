@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AppGlobals.applicationContext = applicationContext
+        AppGlobals.applicationContext = application
         setContentView(R.layout.activity_main)
 
         textViewIP = findViewById(R.id.textViewIP)
