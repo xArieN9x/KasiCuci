@@ -2,9 +2,10 @@ package com.example.allinoneflushapp
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
-import android.os.Build
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
@@ -14,39 +15,35 @@ class AccessibilityAutomationService : AccessibilityService() {
 
     companion object {
         private val handler = Handler(Looper.getMainLooper())
+        private const val airplaneDelay: Long = 8000
 
         fun clearCacheForceStopApp(packageName: String) {
             val context = AppGlobals.applicationContext
-            // Open App Info settings for target app
             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            intent.data = android.net.Uri.parse("package:$packageName")
+            intent.data = Uri.parse("package:$packageName")
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             context.startActivity(intent)
 
-            // Small delay to let Settings open
             handler.postDelayed({
-                // Simulate Accessibility actions:
-                // 1. Scroll to "Force Stop" button
-                // 2. Click Force Stop
-                // 3. Scroll to "Clear Cache" or "Storage" and tap
-                // NOTE: exact node text may vary by ColorOS
-            }, 1500)
+                val service = AppGlobals.accessibilityService ?: return@postDelayed
+                service.clickNodeByText("Force Stop")
+                handler.postDelayed({
+                    service.clickNodeByText("OK") // Confirm
+                    service.clickNodeByText("Clear Cache")
+                }, 1000)
+            }, 2000)
         }
 
-        @RequiresApi(Build.VERSION_CODES.M)
+        @RequiresApi(23)
         fun toggleAirplaneMode() {
-            val context = AppGlobals.applicationContext
-
-            // Open Quick Settings Panel (Accessibility)
-            val intent = Intent(Settings.ACTION_SETTINGS)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            context.startActivity(intent)
-
+            val service = AppGlobals.accessibilityService ?: return
+            service.performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
             handler.postDelayed({
-                // Use AccessibilityService to find Airplane Mode toggle
-                // Tap ON → wait 8 sec → Tap OFF
-                // Requires UiAutomator or AccessibilityNodeInfo traversal
-            }, 1000)
+                service.clickNodeByText("Airplane mode")
+                SystemClock.sleep(airplaneDelay)
+                service.clickNodeByText("Airplane mode")
+                service.performGlobalAction(GLOBAL_ACTION_HOME)
+            }, 1500)
         }
     }
 
@@ -54,19 +51,16 @@ class AccessibilityAutomationService : AccessibilityService() {
 
     override fun onInterrupt() {}
 
-    /**
-     * Helper function: traverse UI to find node by text and click
-     */
-    private fun clickNodeByText(root: AccessibilityNodeInfo?, text: String) {
-        root ?: return
-        val nodes = root.findAccessibilityNodeInfosByText(text)
-        for (node in nodes) {
-            if (node.isClickable) {
-                node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-                return
-            } else if (node.parent != null) {
-                clickNodeByText(node.parent, text)
-            }
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        AppGlobals.accessibilityService = this
+    }
+
+    fun clickNodeByText(text: String) {
+        val rootNode = rootInActiveWindow ?: return
+        val nodes = rootNode.findAccessibilityNodeInfosByText(text)
+        if (nodes.isNotEmpty()) {
+            nodes[0].performAction(AccessibilityNodeInfo.ACTION_CLICK)
         }
     }
 }
