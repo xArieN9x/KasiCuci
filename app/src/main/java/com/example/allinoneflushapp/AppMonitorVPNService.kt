@@ -89,13 +89,11 @@ class AppMonitorVPNService : VpnService() {
         } catch (e: Exception) {
             null
         }
-    }
-
-        // update notification to reflect connection attempt
+    
         try {
             startForeground(NOTIF_ID, createNotification("Panda Monitor (DNS: $dns)", connected = vpnInterface != null))
         } catch (_: Exception) {}
-
+    
         // start monitoring
         monitorTraffic()
     }
