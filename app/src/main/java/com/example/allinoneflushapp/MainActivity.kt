@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
             delay(3000)
             AccessibilityAutomationService.requestToggleAirplane()
             // 3. Wait for airplane cycle and network recovery then start/refresh VPN
-            delay(11000) // 8 sec ON + some buffer
+            delay(7000) // 4 sec ON + some buffer
             requestVpnPermission()
             // 4. After VPN ready, rotate DNS and refresh IP
             delay(2000)
