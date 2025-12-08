@@ -15,7 +15,7 @@ class AccessibilityAutomationService : AccessibilityService() {
 
     companion object {
         private val handler = Handler(Looper.getMainLooper())
-        private const val AIRPLANE_DELAY = 4000L
+        private const val AIRPLANE_DELAY = 8000L
         private val storageKeys = arrayOf("Storage usage", "Storage usage ", "Storage", "Storage & cache", "App storage")
         private val forceStopKeys = arrayOf("Force stop", "Force stop ", "Force Stop", "Force Stop ", "Paksa berhenti", "Paksa Hentikan")
         private val confirmOkKeys = arrayOf("OK", "Yes", "Confirm", "Ya", "Force stop ", "Force stop")
