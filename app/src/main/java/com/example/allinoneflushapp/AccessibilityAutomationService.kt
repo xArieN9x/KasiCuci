@@ -17,9 +17,9 @@ class AccessibilityAutomationService : AccessibilityService() {
         private val handler = Handler(Looper.getMainLooper())
         private const val AIRPLANE_DELAY = 4000L
         private val storageKeys = arrayOf("Storage usage", "Storage usage ", "Storage", "Storage & cache", "App storage")
-        private val forceStopKeys = arrayOf("Force stop", "Force stop ", "Force Stop", "Paksa berhenti", "Paksa Hentikan")
+        private val forceStopKeys = arrayOf("Force stop", "Force stop ", "Force Stop", "Force Stop ", "Paksa berhenti", "Paksa Hentikan")
         private val confirmOkKeys = arrayOf("OK", "Yes", "Confirm", "Ya", "Force stop ", "Force stop")
-        private val clearCacheKeys = arrayOf("Clear cache", "Clear cache ", "Clear Cache", "Kosongkan cache")
+        private val clearCacheKeys = arrayOf("Clear cache", "Clear cache ", "Clear Cache", "Clear Cache ", "Kosongkan cache")
 
         fun requestClearAndForceStop(packageName: String) {
             val ctx = AppGlobals.applicationContext
@@ -50,7 +50,7 @@ class AccessibilityAutomationService : AccessibilityService() {
             svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
             handler.postDelayed({
                 // Try a few localized labels
-                val clicked = svc.findAndClick("Airplane mode", "Airplane mode ","Airplane", "Mod Pesawat", "Mod Penerbangan", "Aeroplane mode")
+                val clicked = svc.findAndClick("Airplane mode", "Airplane mode ", "Airplane", "Mod Pesawat", "Mod Penerbangan", "Aeroplane mode")
                 if (!clicked) {
                     // fallback: try icon desc scanning
                     svc.findAndClick("Airplane")
