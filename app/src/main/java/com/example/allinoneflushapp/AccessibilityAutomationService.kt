@@ -50,7 +50,7 @@ class AccessibilityAutomationService : AccessibilityService() {
             svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS)
             handler.postDelayed({
                 // Try a few localized labels
-                val clicked = svc.findAndClick("Airplane mode", "Airplane mode ","Airplane", "Mod Pesawat", "Mod Penerbangan", "Aeroplane mode")
+                val clicked = svc.findAndClick("Airplane mode", "Airplane mode ", "Airplane", "Mod Pesawat", "Mod Penerbangan", "Aeroplane mode")
                 if (!clicked) {
                     // fallback: try icon desc scanning
                     svc.findAndClick("Airplane")
@@ -60,11 +60,11 @@ class AccessibilityAutomationService : AccessibilityService() {
                 // toggle OFF
                 svc.findAndClick("Airplane mode", "Airplane mode ", "Airplane", "Mod Pesawat", "Mod Penerbangan")
                 svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
-		handler.postDelayed({
-            	    AppGlobals.accessibilityService?.launchPandaApp()
-                }, 2000)
-
-            }, 700)
+				handler.postDelayed({
+		            AppGlobals.accessibilityService?.launchPandaApp()
+		        }, 1000)
+				
+            }, 400)
         }
     }
 
