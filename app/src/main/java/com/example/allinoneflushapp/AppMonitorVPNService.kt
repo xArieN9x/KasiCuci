@@ -72,28 +72,28 @@ class AppMonitorVPNService : VpnService() {
         try {
             vpnInterface?.close()
         } catch (_: Exception) {}
+    
         val builder = Builder()
         builder.setSession("PandaMonitor")
             .addAddress("10.0.0.2", 32)
             .addDnsServer(dns)
             .addRoute("1.1.1.1", 32)
             .addRoute("0.0.0.0", 0)
-   
+    
         try {
             builder.addAllowedApplication("com.logistics.rider.foodpanda")
         } catch (_: Exception) {}
-
+    
         vpnInterface = try {
             builder.establish()
         } catch (e: Exception) {
             null
         }
-
-        // update notification to reflect connection attempt
+    
         try {
             startForeground(NOTIF_ID, createNotification("Panda Monitor (DNS: $dns)", connected = vpnInterface != null))
         } catch (_: Exception) {}
-
+    
         // start monitoring
         monitorTraffic()
     }
