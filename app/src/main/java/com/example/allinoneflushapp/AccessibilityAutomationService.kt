@@ -43,9 +43,15 @@ class AccessibilityAutomationService : AccessibilityService() {
                         // ✅ FIX: Wait screen load + clear cache with enough time
                         handler.postDelayed({ 
                             svc.findAndClick(*clearCacheKeys)
-                            // ✅ FIX: Back AFTER clear cache definitely done (5sec buffer)
+                            // ✅ FIX: Multiple BACK to close App Info completely
                             handler.postDelayed({ 
-                                svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK) 
+                                svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                                handler.postDelayed({
+                                    svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                                    handler.postDelayed({
+                                        svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+                                    }, 300)
+                                }, 300)
                             }, 4000)
                         }, 1500)
                     }
