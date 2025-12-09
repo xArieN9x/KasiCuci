@@ -10,6 +10,10 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
 
 class AppMonitorVPNService : VpnService() {
 
@@ -29,6 +33,9 @@ class AppMonitorVPNService : VpnService() {
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
+    private var outSocket: DatagramSocket? = null
+    private var forwardingActive = false
+    
     private val CHANNEL_ID = "panda_monitor_channel"
     private val NOTIF_ID = 1001
 
@@ -36,7 +43,6 @@ class AppMonitorVPNService : VpnService() {
         instance = this
         createNotificationChannel()
         startForeground(NOTIF_ID, createNotification("Panda Monitor running", connected = false))
-        // initial establish with default dns
         establishVPN("8.8.8.8")
         return START_STICKY
     }
@@ -56,7 +62,6 @@ class AppMonitorVPNService : VpnService() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
         )
 
-        // use safe built-in icons instead of removed stat_sys_vpn
         val smallIcon = if (connected) android.R.drawable.presence_online else android.R.drawable.presence_busy
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -70,57 +75,139 @@ class AppMonitorVPNService : VpnService() {
 
     fun establishVPN(dns: String) {
         try {
+            forwardingActive = false
             vpnInterface?.close()
+            outSocket?.close()
         } catch (_: Exception) {}
-    
+
         val builder = Builder()
         builder.setSession("PandaMonitor")
             .addAddress("10.0.0.2", 32)
-            .addDnsServer(dns)
-            .addRoute("1.1.1.1", 32)
             .addRoute("0.0.0.0", 0)
-    
-        try {
-            builder.addAllowedApplication("com.logistics.rider.foodpanda")
-        } catch (_: Exception) {}
-    
+            .addAllowedApplication("com.logistics.rider.foodpanda")
+            .addDnsServer(dns)
+
         vpnInterface = try {
             builder.establish()
         } catch (e: Exception) {
             null
         }
-    
+
         try {
             startForeground(NOTIF_ID, createNotification("Panda Monitor (DNS: $dns)", connected = vpnInterface != null))
         } catch (_: Exception) {}
-    
-        // start monitoring
-        monitorTraffic()
+
+        if (vpnInterface != null) {
+            outSocket = DatagramSocket()
+            forwardingActive = true
+            startPacketForwarding()
+        }
     }
 
-    private fun monitorTraffic() {
+    // ✅ PACKET FORWARDING ENGINE - FIX INTERNET!
+    private fun startPacketForwarding() {
+        // Thread 1: VPN → Internet (Outbound)
         Thread {
-            while (true) {
+            val buffer = ByteArray(32767)
+            while (forwardingActive) {
                 try {
                     val fd = vpnInterface?.fileDescriptor
                     if (fd == null) {
                         pandaActive = false
-                        Thread.sleep(1000)
+                        Thread.sleep(100)
                         continue
                     }
+
                     val input = FileInputStream(fd)
-                    val available = try { input.available() } catch (_: Exception) { 0 }
-                    pandaActive = available > 0
+                    val length = input.read(buffer)
+
+                    if (length > 0) {
+                        pandaActive = true
+                        forwardPacketOut(buffer, length)
+                    }
                 } catch (e: Exception) {
                     pandaActive = false
+                    Thread.sleep(100)
                 }
-                try { Thread.sleep(1000) } catch (_: Exception) {}
+            }
+        }.start()
+
+        // Thread 2: Internet → VPN (Inbound)
+        Thread {
+            val buffer = ByteArray(32767)
+            while (forwardingActive) {
+                try {
+                    val length = receivePacketIn(buffer)
+                    if (length > 0) {
+                        val fd = vpnInterface?.fileDescriptor
+                        if (fd != null) {
+                            val output = FileOutputStream(fd)
+                            output.write(buffer, 0, length)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Thread.sleep(100)
+                }
             }
         }.start()
     }
 
+    private fun forwardPacketOut(packet: ByteArray, length: Int) {
+        try {
+            if (outSocket == null || outSocket?.isClosed == true) {
+                outSocket = DatagramSocket()
+            }
+
+            // Parse destination IP & port
+            val destIP = parseIPDestination(packet)
+            val destPort = parseDestPort(packet)
+
+            val dgram = DatagramPacket(
+                packet, length,
+                InetAddress.getByName(destIP), destPort
+            )
+            outSocket?.send(dgram)
+        } catch (_: Exception) {}
+    }
+
+    private fun receivePacketIn(buffer: ByteArray): Int {
+        return try {
+            val packet = DatagramPacket(buffer, buffer.size)
+            outSocket?.receive(packet)
+            packet.length
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    // Parse IP destination dari packet header
+    private fun parseIPDestination(packet: ByteArray): String {
+        return try {
+            "${packet[16].toUByte()}.${packet[17].toUByte()}." +
+            "${packet[18].toUByte()}.${packet[19].toUByte()}"
+        } catch (_: Exception) {
+            "8.8.8.8"
+        }
+    }
+
+    // Parse destination port dari TCP/UDP header
+    private fun parseDestPort(packet: ByteArray): Int {
+        return try {
+            val ipHeaderLen = (packet[0].toInt() and 0x0F) * 4
+            val portHigh = packet[ipHeaderLen + 2].toUByte().toInt()
+            val portLow = packet[ipHeaderLen + 3].toUByte().toInt()
+            (portHigh shl 8) or portLow
+        } catch (_: Exception) {
+            53 // Default DNS port
+        }
+    }
+
     override fun onDestroy() {
-        try { vpnInterface?.close() } catch (_: Exception) {}
+        try {
+            forwardingActive = false
+            vpnInterface?.close()
+            outSocket?.close()
+        } catch (_: Exception) {}
         pandaActive = false
         instance = null
         super.onDestroy()
