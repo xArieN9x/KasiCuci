@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <!-- Floating Bubble Widget -->
+    <ImageView
+        android:id="@+id/floatingBubble"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@drawable/green_circle"
+        android:elevation="8dp"
+        android:padding="8dp"/>
+
+</RelativeLayout>
