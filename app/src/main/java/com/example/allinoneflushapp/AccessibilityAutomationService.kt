@@ -26,7 +26,7 @@ class AccessibilityAutomationService : AccessibilityService() {
             intent.data = Uri.parse("package:$packageName")
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             ctx.startActivity(intent)
-
+        
             handler.postDelayed({
                 val svc = AppGlobals.accessibilityService ?: return@postDelayed
                 // Click Force Stop
@@ -40,13 +40,16 @@ class AccessibilityAutomationService : AccessibilityService() {
                 handler.postDelayed({
                     val storageClicked = svc.findAndClick(*storageKeys)
                     if (storageClicked) {
-                        // ✅ FIX: Wait screen load + clear cache with enough time
+                        // ✅ FIX: Wait screen load + clear cache
                         handler.postDelayed({ 
                             svc.findAndClick(*clearCacheKeys)
-                            // ✅ FIX: Multiple BACK to close App Info completely
+                            // ✅ FIX: BACK to App Info main, then HOME
                             handler.postDelayed({ 
-                                svc.performGlobalAction(GLOBAL_ACTION_HOME) // Terus HOME!
-                            }, 4000)
+                                svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+                                handler.postDelayed({
+                                    svc.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+                                }, 400)
+                            }, 800)
                         }, 1500)
                     }
                 }, 1800)
