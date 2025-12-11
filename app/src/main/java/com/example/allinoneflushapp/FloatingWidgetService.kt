@@ -9,6 +9,11 @@ import android.view.*
 import android.widget.ImageView
 import kotlinx.coroutines.*
 
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import android.animation.ValueAnimator
+import android.graphics.Color
+
 class FloatingWidgetService : Service() {
 
     private var windowManager: WindowManager? = null
