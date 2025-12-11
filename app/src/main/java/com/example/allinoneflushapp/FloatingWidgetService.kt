@@ -33,6 +33,8 @@ class FloatingWidgetService : Service() {
         
         floatingView = LayoutInflater.from(this).inflate(R.layout.widget_layout, null)
         bubbleImage = floatingView?.findViewById(R.id.floatingBubble)
+        val textCB = floatingView?.findViewById<TextView>(R.id.textCB)
+
 
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -97,9 +99,36 @@ class FloatingWidgetService : Service() {
     }
 
     private fun updateColor(isActive: Boolean) {
-        bubbleImage?.setImageResource(
-            if (isActive) R.drawable.green_circle else R.drawable.red_circle
+        val from = if (isActive) R.drawable.red_circle else R.drawable.green_circle
+        val to = if (isActive) R.drawable.green_circle else R.drawable.red_circle
+    
+        val start = ContextCompat.getColor(this, 
+            if (isActive) R.color.red_smooth else R.color.green_smooth
         )
+        val end = ContextCompat.getColor(this, 
+            if (isActive) R.color.green_smooth else R.color.red_smooth
+        )
+    
+        animateColorTransition(start, end)
+    }
+
+    private fun animateColorTransition(fromColor: Int, toColor: Int) {
+        val animator = ValueAnimator.ofFloat(0f, 1f)
+        animator.duration = 500
+        animator.addUpdateListener { value ->
+            val fraction = value.animatedFraction
+            val blended = blendColors(fromColor, toColor, fraction)
+            bubbleImage?.setColorFilter(blended)
+        }
+        animator.start()
+    }
+    
+    private fun blendColors(from: Int, to: Int, ratio: Float): Int {
+        val inverse = 1f - ratio
+        val r = Color.red(from) * inverse + Color.red(to) * ratio
+        val g = Color.green(from) * inverse + Color.green(to) * ratio
+        val b = Color.blue(from) * inverse + Color.blue(to) * ratio
+        return Color.rgb(r.toInt(), g.toInt(), b.toInt())
     }
 
     private fun startStatusMonitor() {
