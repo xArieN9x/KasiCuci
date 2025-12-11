@@ -1,27 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="60dp"
-    android:layout_height="60dp">
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
 
     <!-- Bubble background -->
     <ImageView
         android:id="@+id/floatingBubble"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:src="@drawable/green_circle"
-        android:alpha="0.45"
-        android:elevation="8dp" />
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@drawable/green_smooth"
+        android:alpha="0.9"
+        android:elevation="12dp"/>
 
-    <!-- CB TEXT -->
+    <!-- CB Text -->
     <TextView
-        android:id="@+id/textCB"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:id="@+id/bubbleText"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         android:text="CB"
         android:textSize="18sp"
-        android:textStyle="bold"
         android:textColor="#FFFFFF"
-        android:gravity="center"
-        android:alpha="0.90" />
+        android:textStyle="bold"
+        android:gravity="center"/>
 
-</FrameLayout>
+</RelativeLayout>
