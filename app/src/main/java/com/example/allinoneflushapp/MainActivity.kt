@@ -16,8 +16,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.*
-import kotlin.system.exitProcess
 import java.net.URL
+import kotlin.system.exitProcess
 
 class MainActivity : AppCompatActivity() {
     private lateinit var textViewIP: TextView
@@ -29,12 +29,10 @@ class MainActivity : AppCompatActivity() {
     private val pandaPackage = "com.logistics.rider.foodpanda"
     private val dnsList = listOf("1.1.1.1", "156.154.70.1", "8.8.8.8", "76.76.2.0")
 
-    // ✅ HANYA SATU vpnPermissionLauncher
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            Toast.makeText(this, "Setting up VPN...", Toast.LENGTH_SHORT).show()
             actuallyStartVpnService()
         } else {
             Toast.makeText(this, "VPN permission required", Toast.LENGTH_SHORT).show()
@@ -77,9 +75,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun actuallyStartVpnService() {
-        // Stop existing service to ensure clean start
         stopService(Intent(this, AppMonitorVPNService::class.java))
-        // Start fresh
         startService(Intent(this, AppMonitorVPNService::class.java))
         AppMonitorVPNService.rotateDNS(dnsList)
     }
@@ -89,7 +85,6 @@ class MainActivity : AppCompatActivity() {
         if (intent != null) {
             vpnPermissionLauncher.launch(intent)
         } else {
-            // Already granted → start directly
             actuallyStartVpnService()
         }
     }
@@ -139,11 +134,13 @@ class MainActivity : AppCompatActivity() {
         if (FloatingWidgetService.isRunning()) {
             stopService(Intent(this, FloatingWidgetService::class.java))
         }
-        AccessibilityAutomationService.requestForceStopOnly(pandaPackage)
+        // ✅ Gantikan Accessibility force-stop dengan cara selamat
+        val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
+        am.killBackgroundProcesses(pandaPackage)
         Handler(Looper.getMainLooper()).postDelayed({
             finishAffinity()
             exitProcess(0)
-        }, 2000)
+        }, 1500)
     }
 
     private fun updateIP() {
@@ -188,12 +185,10 @@ class MainActivity : AppCompatActivity() {
 
             Toast.makeText(this@MainActivity, "Setting up VPN tunnel...", Toast.LENGTH_SHORT).show()
             requestVpnPermission()
-
-            // ✅ Tunggu VPN stabil sebelum lanjut
-            delay(3500)
+            delay(3500) // ✅ Delay untuk stabil
 
             rotateDNS()
-            delay(3000)
+            delay(3000) // ✅ Delay IP (FIX #4)
             updateIP()
             delay(1000)
             launchPandaApp()
