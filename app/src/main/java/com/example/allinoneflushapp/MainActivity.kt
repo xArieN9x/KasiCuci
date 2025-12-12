@@ -16,6 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.*
+import kotlin.system.exitProcess
 import java.net.URL
 
 class MainActivity : AppCompatActivity() {
