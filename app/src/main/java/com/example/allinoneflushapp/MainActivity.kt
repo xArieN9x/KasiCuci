@@ -144,21 +144,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateIP() {
         CoroutineScope(Dispatchers.IO).launch {
-            val apis = listOf(
-                "https://api.ipify.org",
-                "https://icanhazip.com",
-                "https://ifconfig.me/ip"
-            )
             var ip: String? = null
-            for (api in apis) {
+            try {
+                val url = URL("https://1.1.1.1/cdn-cgi/trace")
+                val text = url.readText().trim()
+                // Format: ip=123.123.123.123
+                val ipLine = text.lines().find { it.startsWith("ip=") }
+                ip = ipLine?.substringAfter("=")?.trim()
+            } catch (e1: Exception) {
+                // Fallback to ipify jika 1.1.1.1 gagal
                 try {
-                    val result = URL(api).readText().trim()
-                    if (result.isNotEmpty()) {
-                        ip = result
-                        break
-                    }
-                } catch (e: Exception) {
-                    continue
+                    ip = URL("https://api.ipify.org").readText().trim()
+                } catch (e2: Exception) {
+                    ip = null
                 }
             }
             withContext(Dispatchers.Main) {
