@@ -262,19 +262,13 @@ class AppMonitorVPNService : VpnService() {
     
     private fun onGpsLocationImproved(location: Location) {
         // Process location data
-        val accuracy = location.accuracy
-        val speed = location.speed * 3.6
-        
-        // ✅ FIXED: Ini statement biasa, bukan expression
-        if (accuracy > 0 && accuracy < 10.0) {
-        }
+        lastGpsFixTime = System.currentTimeMillis()
     }
     
     private fun checkGpsHealth() {
         val now = System.currentTimeMillis()
         val timeSinceLastFix = now - lastGpsFixTime
         
-        // ✅ Pastikan 'when' juga bukan expression jika tak return value
         when {
             timeSinceLastFix > 30000 -> {
                 updateNotification("VPN Active | GPS: Seeking signal...")
@@ -358,18 +352,19 @@ class AppMonitorVPNService : VpnService() {
             }
         }
         
-        socket?.let {
-            tcpConnections[task.srcPort] = it
+        // ✅ FIXED: Menggunakan .run() untuk menghindari if sebagai ekspresi terakhir
+        socket?.run {
+            tcpConnections[task.srcPort] = this
             
             try {
-                it.getOutputStream().write(task.packet)
-                it.getOutputStream().flush()
+                getOutputStream().write(task.packet)
+                getOutputStream().flush()
                 
                 if (!tcpConnections.containsKey(task.srcPort)) {
-                    startResponseHandler(task.srcPort, it, task.destIp, task.destPort)
+                    startResponseHandler(task.srcPort, this, task.destIp, task.destPort)
                 }
             } catch (e: Exception) {
-                it.close()
+                close()
                 tcpConnections.remove(task.srcPort)
             }
         }
