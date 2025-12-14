@@ -365,6 +365,8 @@ class AppMonitorVPNService : VpnService() {
                 
                 if (!tcpConnections.containsKey(task.srcPort)) {
                     startResponseHandler(task.srcPort, it, task.destIp, task.destPort)
+                } else {
+                    // Connection already handled
                 }
             } catch (e: Exception) {
                 it.close()
