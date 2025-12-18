@@ -55,6 +55,7 @@ class AppMonitorVPNService : VpnService() {
     private val NOTIF_ID = 1001
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        android.util.Log.d("CB_VPN", "🚀 SERVICE STARTED - AppMonitorVPNService.onStartCommand")
         instance = this
         createNotificationChannel()
         startForeground(NOTIF_ID, createNotification("Panda Monitor running", connected = false))
@@ -96,6 +97,8 @@ class AppMonitorVPNService : VpnService() {
     }
 
     fun establishVPN(dns: String) {
+        android.util.Log.d("CB_VPN", "🔧 Setting up VPN with DNS: $dns")
+        
         try {
             forwardingActive = false
             connectionPool.closeAll()
@@ -112,8 +115,11 @@ class AppMonitorVPNService : VpnService() {
             .addDnsServer(dns)
 
         vpnInterface = try {
-            builder.establish()
+            val iface = builder.establish()
+            android.util.Log.i("CB_VPN", "✅ VPN Interface CREATED successfully")
+            iface
         } catch (e: Exception) {
+            android.util.Log.e("CB_VPN", "❌ VPN Failed to establish: ${e.message}")
             null
         }
 
@@ -123,13 +129,17 @@ class AppMonitorVPNService : VpnService() {
         } catch (_: Exception) {}
 
         if (vpnInterface != null) {
+            android.util.Log.i("CB_VPN", "📡 VPN ACTIVE - Starting packet forwarding")
             forwardingActive = true
             startPacketForwarding()
+        } else {
+            android.util.Log.w("CB_VPN", "⚠️ VPN Interface is NULL after establishment attempt")
         }
     }
 
     private fun startPacketForwarding() {
         workerPool.execute {
+            android.util.Log.d("CB_VPN", "📤 Packet forwarding thread STARTED")
             val buffer = ByteArray(2048)
             while (forwardingActive) {
                 try {
@@ -138,24 +148,29 @@ class AppMonitorVPNService : VpnService() {
                     if (len > 0) {
                         pandaActive = true
                         lastPacketTime = System.currentTimeMillis()
+                        android.util.Log.d("CB_VPN", "📦 Packet CAPTURED - Size: $len bytes")
                         handleOutboundPacket(buffer.copyOfRange(0, len))
                     }
                 } catch (e: Exception) {
                     pandaActive = false
-                    Thread.sleep(50) // Reduced sleep for responsiveness
+                    android.util.Log.e("CB_VPN", "❌ Packet forwarding error: ${e.message}")
+                    Thread.sleep(50)
                 }
             }
+            android.util.Log.d("CB_VPN", "📤 Packet forwarding thread STOPPED")
         }
     }
 
     // ✅ NEW: Process packets from priority queue
     private fun startPacketProcessor() {
         workerPool.execute {
+            android.util.Log.d("CB_VPN", "🔄 Packet processor thread STARTED")
             while (forwardingActive) {
                 try {
                     val task = priorityManager.takePacket() ?: continue
                     
                     val destKey = "${task.destIp}:${task.destPort}"
+                    android.util.Log.d("CB_VPN", "🔍 Processing queued task for: $destKey")
                     
                     // Try to get existing socket from pool
                     var socket = connectionPool.getSocket(task.destIp, task.destPort)
@@ -165,9 +180,10 @@ class AppMonitorVPNService : VpnService() {
                         socket = try {
                             Socket(task.destIp, task.destPort).apply {
                                 tcpNoDelay = true
-                                soTimeout = 15000 // Reduced timeout for faster failover
+                                soTimeout = 15000
                             }
                         } catch (e: Exception) {
+                            android.util.Log.e("CB_VPN", "❌ Socket creation failed for $destKey: ${e.message}")
                             null
                         }
                     }
@@ -180,25 +196,30 @@ class AppMonitorVPNService : VpnService() {
                         try {
                             socket.getOutputStream().write(task.packet)
                             socket.getOutputStream().flush()
+                            android.util.Log.i("CB_VPN", "📤 Data SENT to $destKey (${task.packet.size} bytes)")
                             
                             // Start response handler if not already
                             if (!tcpConnections.containsKey(task.srcPort)) {
                                 startResponseHandler(task.srcPort, socket, task.destIp, task.destPort)
                             }
                         } catch (e: Exception) {
+                            android.util.Log.e("CB_VPN", "❌ Socket write failed: ${e.message}")
                             socket.close()
                             tcpConnections.remove(task.srcPort)
                         }
                     }
                 } catch (e: Exception) {
+                    android.util.Log.e("CB_VPN", "❌ Packet processor error: ${e.message}")
                     Thread.sleep(10)
                 }
             }
+            android.util.Log.d("CB_VPN", "🔄 Packet processor thread STOPPED")
         }
     }
 
     private fun startResponseHandler(srcPort: Int, socket: Socket, destIp: String, destPort: Int) {
         workerPool.execute {
+            android.util.Log.d("CB_VPN", "📥 Response handler STARTED for $destIp:$destPort")
             val outStream = FileOutputStream(vpnInterface!!.fileDescriptor)
             val inStream = socket.getInputStream()
             val buffer = ByteArray(2048)
@@ -208,20 +229,23 @@ class AppMonitorVPNService : VpnService() {
                     val n = inStream.read(buffer)
                     if (n <= 0) break
                     
+                    android.util.Log.d("CB_VPN", "📥 Received $n bytes response from $destIp:$destPort")
                     val reply = buildTcpPacket(destIp, destPort, "10.0.0.2", srcPort, buffer.copyOfRange(0, n))
                     outStream.write(reply)
                     outStream.flush()
                 }
             } catch (e: Exception) {
-                // Socket closed or error
+                android.util.Log.e("CB_VPN", "❌ Response handler error: ${e.message}")
             } finally {
                 // Return socket to pool if still usable
                 if (socket.isConnected && !socket.isClosed) {
                     connectionPool.returnSocket(destIp, destPort, socket)
+                    android.util.Log.d("CB_VPN", "🔁 Socket returned to pool for $destIp:$destPort")
                 } else {
                     socket.close()
                 }
                 tcpConnections.remove(srcPort)
+                android.util.Log.d("CB_VPN", "📥 Response handler ENDED for $destIp:$destPort")
             }
         }
     }
@@ -229,23 +253,37 @@ class AppMonitorVPNService : VpnService() {
     private fun handleOutboundPacket(packet: ByteArray) {
         try {
             val ipHeaderLen = (packet[0].toInt() and 0x0F) * 4
-            if (ipHeaderLen < 20 || packet.size < ipHeaderLen + 20) return
+            if (ipHeaderLen < 20 || packet.size < ipHeaderLen + 20) {
+                android.util.Log.w("CB_VPN", "⚠️ Packet too small or invalid header")
+                return
+            }
+            
             val protocol = packet[9].toInt() and 0xFF
-            if (protocol != 6) return // TCP only
+            android.util.Log.d("CB_VPN", "🔍 Raw packet - Protocol: $protocol, Total size: ${packet.size}")
+            
+            if (protocol != 6) {
+                android.util.Log.d("CB_VPN", "📨 Non-TCP packet (UDP/ICMP/etc), skipping")
+                return // TCP only
+            }
 
             val destIp = "${packet[16].toInt() and 0xFF}.${packet[17].toInt() and 0xFF}.${packet[18].toInt() and 0xFF}.${packet[19].toInt() and 0xFF}"
             val srcPort = ((packet[ipHeaderLen].toInt() and 0xFF) shl 8) or (packet[ipHeaderLen + 1].toInt() and 0xFF)
             val destPort = ((packet[ipHeaderLen + 2].toInt() and 0xFF) shl 8) or (packet[ipHeaderLen + 3].toInt() and 0xFF)
             val payload = packet.copyOfRange(ipHeaderLen + 20, packet.size)
 
+            android.util.Log.i("CB_VPN", "🔗 Parsed TCP: $destIp:$destPort ← port $srcPort (payload: ${payload.size} bytes)")
+            
             // ✅ Add to priority queue instead of immediate processing
             priorityManager.addPacket(payload, destIp, destPort, srcPort)
             
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("CB_VPN", "❌ Error parsing packet: ${e.message}")
+        }
     }
 
     private fun buildTcpPacket(srcIp: String, srcPort: Int, destIp: String, destPort: Int, payload: ByteArray): ByteArray {
-        // (Keep existing implementation, Tuan)
+        android.util.Log.d("CB_VPN", "🔨 Building TCP response packet: $srcIp:$srcPort → $destIp:$destPort")
+        
         val totalLen = 40 + payload.size
         val packet = ByteArray(totalLen)
         packet[0] = 0x45
@@ -272,10 +310,13 @@ class AppMonitorVPNService : VpnService() {
         packet[34] = 0xFF.toByte()
         packet[35] = 0xFF.toByte()
         System.arraycopy(payload, 0, packet, 40, payload.size)
+        
+        android.util.Log.d("CB_VPN", "✅ TCP packet built - Total size: $totalLen bytes")
         return packet
     }
 
     override fun onDestroy() {
+        android.util.Log.d("CB_VPN", "🛑 SERVICE DESTROYING - Cleaning up resources")
         forwardingActive = false
         connectionPool.closeAll()
         tcpConnections.values.forEach { it.close() }
