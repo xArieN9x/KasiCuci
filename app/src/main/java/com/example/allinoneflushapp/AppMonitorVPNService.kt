@@ -106,15 +106,18 @@ class AppMonitorVPNService : VpnService() {
             tcpConnections.clear()
             vpnInterface?.close()
         } catch (_: Exception) {}
-
+    
         val builder = Builder()
         builder.setSession("PandaMonitor")
-            .addAddress("10.0.0.2", 32)
-            .addRoute("0.0.0.0", 0)
+            .addAddress("192.168.77.2", 32)           // ✅ PAKAI IP BARU (elak conflict)
+            .addRoute("0.0.0.0", 0)                    // ✅ ROUTE SEMUA TRAFFIC
+            .addDisallowedRoute("192.168.77.0", 24)    // ✅ ELAK LOCAL CONFLICT
             .addAllowedApplication("com.logistics.rider.foodpanda")
             .addDnsServer(dns)
-            .addDnsServer("1.1.1.1") // Backup DNS
-
+            .addDnsServer("1.1.1.1")
+            .setBlocking(true)                         // ✅ FORCE BLOCK NON-VPN TRAFFIC
+            .setMtu(1500)
+    
         vpnInterface = try {
             val iface = builder.establish()
             android.util.Log.i("CB_VPN", "✅ VPN Interface CREATED")
@@ -123,7 +126,7 @@ class AppMonitorVPNService : VpnService() {
             android.util.Log.e("CB_VPN", "❌ VPN Failed: ${e.message}")
             null
         }
-
+    
         if (vpnInterface != null) {
             forwardingActive = true
             updateNotification("VPN Active | Order Ready 🚀", true)
